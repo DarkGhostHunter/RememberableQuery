@@ -5,14 +5,13 @@ namespace DarkGhostHunter\RememberableQuery\Tests;
 use Orchestra\Testbench\TestCase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Auth\User;
-use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\DatabaseMigrations;
 use Orchestra\Testbench\Concerns\WithLaravelMigrations;
 use DarkGhostHunter\RememberableQuery\RememberableQuery;
 use DarkGhostHunter\RememberableQuery\RememberableQueryServiceProvider;
 
-class ExampleTest extends TestCase
+class TestRememberable extends TestCase
 {
     use WithLaravelMigrations;
     use WithFaker;
