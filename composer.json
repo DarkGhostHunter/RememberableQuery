@@ -28,18 +28,16 @@
     },
     "autoload": {
         "psr-4": {
-            "DarkGhostHunter\\RememberableQuery\\": "src"
+            "DarkGhostHunter\\RememberableQuery\\": "src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "DarkGhostHunter\\RememberableQuery\\Tests\\": "tests"
+            "Tests\\": "tests/"
         }
     },
     "scripts": {
-        "test": "vendor/bin/phpunit",
-        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
-
+        "test": "vendor/bin/phpunit"
     },
     "config": {
         "sort-packages": true
