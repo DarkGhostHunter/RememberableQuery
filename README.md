@@ -40,6 +40,8 @@ $userB = User::where('name', 'Joe')->remember()->first();
 
 The next time you call the **same** query, the result will be retrieved from the cache instead of connecting to Database. 
 
+> If the result is `null` or `false`, it won't be remembered, which mimics the Cache behaviour on these values.
+
 ### Time-to-live
 
 By default, queries are remembered by 60 seconds, but you're free to use any length, or Datetime or Carbon instance.
