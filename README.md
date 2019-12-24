@@ -1,5 +1,10 @@
 ![Patrick Perkins - Unslash (UL) #ETRPjvb0KM0](https://images.unsplash.com/photo-1503551723145-6c040742065b?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80&q=80&w=1280&h=400)
 
+[![Latest Version on Packagist](https://img.shields.io/packagist/v/darkghosthunter/rememberable-query.svg?style=flat-square)](https://packagist.org/packages/darkghosthunter/rememberable-query) [![License](https://poser.pugx.org/darkghosthunter/rememberable-query/license)](https://packagist.org/packages/darkghosthunter/rememberable-query)
+![](https://img.shields.io/packagist/php-v/darkghosthunter/rememberable-query.svg)
+ ![](https://github.com/DarkGhostHunter/RememberableQuery/workflows/PHP%20Composer/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/DarkGhostHunter/RememberableQuery/badge.svg?branch=master)](https://coveralls.io/github/DarkGhostHunter/RememberableQuery?branch=master)
+
 # Rememberable Queries
 
 Remember your Query results using only one method. Yes, only one.
