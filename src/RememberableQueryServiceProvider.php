@@ -15,11 +15,11 @@ class RememberableQueryServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        QueryBuilder::macro('remember', function (int $ttl, string $cacheKey = null) {
+        QueryBuilder::macro('remember', function ($ttl = 60, string $cacheKey = null) {
             return app(RememberableQuery::class)->setBuilder($this)->remember($ttl, $cacheKey);
         });
 
-        EloquentBuilder::macro('remember', function (int $ttl, string $cacheKey = null) {
+        EloquentBuilder::macro('remember', function ($ttl = 60, string $cacheKey = null) {
             return app(RememberableQuery::class)->setBuilder($this)->remember($ttl, $cacheKey);
         });
     }
