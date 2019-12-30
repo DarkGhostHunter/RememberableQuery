@@ -14,8 +14,8 @@ Remember your Query results using only one method. Yes, only one.
 ## Requirements
 
 * PHP 7.2 or latest
-* Laravel 5.8|6.0
-* A functioning brain
+* Laravel 5.8|6.x
+* A working brain
 
 ## Installation
 
@@ -33,18 +33,18 @@ Just use the `remember()` method to remember a Query result. That's it.
 use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Auth\User;
 
-$userA = DB::table('users')->remember()->where('name', 'Joe')->first();
+$query = DB::table('users')->remember()->where('name', 'Joe')->first();
 
-$userB = User::where('name', 'Joe')->remember()->first();
+$eloquent = User::where('name', 'Joe')->remember()->first();
 ```
 
-The next time you call the **same** query, the result will be retrieved from the cache instead of connecting to Database. 
+The next time you call the **same** query, the result will be retrieved from the cache instead of running the SQL statement in the database. 
 
 > If the result is `null` or `false`, it won't be remembered, which mimics the Cache behaviour on these values.
 
 ### Time-to-live
 
-By default, queries are remembered by 60 seconds, but you're free to use any length, or Datetime or Carbon instance.
+By default, queries are remembered by 60 seconds, but you're free to use any length, Datetime, DateInterval or Carbon instance.
 
 ```php
 User::where('name', 'Joe')->remember(today()->addHour())->first();
@@ -52,28 +52,11 @@ User::where('name', 'Joe')->remember(today()->addHour())->first();
 
 ### Custom Cache Key
 
-By default, the cache key is an MD5 hash of the SQL query and bindings, which avoids any collision with other queries. You can use any string, but is recommended to append `query|myCustomKey` to avoid conflicts with other cache keys.
+By default, the cache key is an MD5 hash of the SQL query and bindings, which avoids any collision with other queries. You can use any string, but is recommended to append `query|{key}` to avoid conflicts with other cache keys in your application.
 
 ```php
 User::where('name', 'Joe')->remember(30, 'query|find_joe')->first();
 ```
-
-
-### When two Builders are not the same
-
-Consider that altering the Builder methods order may change the automatic cache key generation, even if they are practically the same. For example:
-
-```php
-<?php
-
-DB::table('users')->remember()->whereName('Joe')->whereAge(20)->first();
-// "query|fecc2c1bb6396e485d94eede60532937"
-
-DB::table('users')->remember()->whereAge(20)->whereName('Joe')->first();
-// "query|3ac5eba7cd0ef6151481bdfe46f6c22f"
-```
-
-If you plan to _remember_ the same query on different parts of your application, it's recommended to set manually the same Cache Key to avoid using different cache keys. 
 
 ### Custom Cache
 
@@ -93,6 +76,33 @@ public function boot()
 }
 ```
 
+## Mind the gap
+
+There are two things you should be warned about. 
+
+### Operations are **NOT** commutative 
+
+Altering the Builder methods order may change the automatic cache key generation. Even if they are *practically* the same, the order of statements makes them different. For example:
+
+```php
+<?php
+
+DB::table('users')->remember()->whereName('Joe')->whereAge(20)->first();
+// "query|fecc2c1bb6396e485d94eede60532937"
+
+DB::table('users')->remember()->whereAge(20)->whereName('Joe')->first();
+// "query|3ac5eba7cd0ef6151481bdfe46f6c22f"
+```
+
+If you plan to _remember_ the same query on different parts of your application, it's recommended to set manually the same Cache Key to ensure hitting the cached results.
+
+### Only works for SELECT statements
+
+The nature of remembering a Query is to cache the result automatically. 
+
+Caching the result for `UPDATE`, `DELETE` and `INSERT` operations will cache the result and subsequents operations won't be executed, returning unexpected results.
+
+Don't use `remember()` on anything that is not a `SELECT` statement. 
 
 ## License
 
