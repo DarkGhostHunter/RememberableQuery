@@ -43,23 +43,22 @@ class RememberableQuery
      * RememberableQuery constructor.
      *
      * @param  \Illuminate\Contracts\Cache\Repository $cache
+     * @param \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
      */
-    public function __construct(Cache $cache)
+    public function __construct(Cache $cache, $builder)
     {
         $this->cache = $cache;
+        $this->builder = $builder;
     }
 
     /**
-     * Sets the Builder instance
+     * Returns the Builder instance
      *
-     * @param  \Illuminate\Database\Query\Builder|\Illuminate\Database\Eloquent\Builder $builder
-     * @return $this
+     * @return \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
      */
-    public function setBuilder($builder)
+    public function builder()
     {
-        $this->builder = $builder;
-
-        return $this;
+        return $this->builder;
     }
 
     /**
@@ -117,7 +116,16 @@ class RememberableQuery
      */
     protected function cacheKey() : string
     {
-        return $this->cacheKey
-            ?? 'query|' . md5($this->builder->toSql() . implode('', $this->builder->getBindings()));
+        return $this->cacheKey ?? $this->cacheKeyHash();
+    }
+
+    /**
+     * Returns the auto-generated cache key
+     *
+     * @return string
+     */
+    public function cacheKeyHash() : string
+    {
+        return 'query|' . md5($this->builder->toSql() . implode('', $this->builder->getBindings()));
     }
 }
