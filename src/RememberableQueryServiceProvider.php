@@ -3,8 +3,8 @@
 namespace DarkGhostHunter\RememberableQuery;
 
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 
 class RememberableQueryServiceProvider extends ServiceProvider
 {
@@ -16,11 +16,11 @@ class RememberableQueryServiceProvider extends ServiceProvider
     public function boot()
     {
         QueryBuilder::macro('remember', function ($ttl = 60, string $cacheKey = null) {
-            return app(RememberableQuery::class)->setBuilder($this)->remember($ttl, $cacheKey);
+            return app(RememberableQuery::class, ['builder' => $this ])->remember($ttl, $cacheKey);
         });
 
         EloquentBuilder::macro('remember', function ($ttl = 60, string $cacheKey = null) {
-            return app(RememberableQuery::class)->setBuilder($this)->remember($ttl, $cacheKey);
+            return app(RememberableQuery::class, ['builder' => $this ])->remember($ttl, $cacheKey);
         });
     }
 }
