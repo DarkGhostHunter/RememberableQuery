@@ -14,7 +14,7 @@ Remember your Query results using only one method. Yes, only one.
 ## Requirements
 
 * PHP 7.2 or latest
-* Laravel 5.8|6.x
+* Laravel 6 or Laravel 7.
 * A working brain
 
 ## Installation
