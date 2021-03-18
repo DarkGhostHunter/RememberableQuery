@@ -13,8 +13,8 @@ Remember your Query results using only one method. Yes, only one.
 
 ## Requirements
 
-* PHP 7.2.15 or latest
-* Laravel 6 or Laravel 7.
+* PHP 7.4 or PHP 8.0
+* Laravel 6.x, 7.x or 8.x
 * A working brain
 
 ## Installation
