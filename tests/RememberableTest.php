@@ -83,4 +83,12 @@ class RememberableTest extends TestCase
         DB::table('users')->delete($id);
         $this->assertNotEquals($id, DB::table('users')->inRandomOrder()->remember(30, 'customKey')->value('id'));
     }
+
+    public function testQueryReturnsSavedNullResult()
+    {
+        $id = DB::table('users')->remember(60)->where('name', 'not-exist')->first();
+
+        $this->assertNull($result = DB::table('users')->remember(60)->where('name', 'not-exist')->first());
+        $this->assertEquals($result, $id);
+    }
 }
