@@ -91,8 +91,8 @@ class RememberableQuery
         $key = $this->cacheKey();
 
         // Let's ask first if the Cache has a result by the key. If it does, return it.
-        if ($cachedResult = $this->cache->get($key)) {
-            return $cachedResult;
+        if ($this->cache->has($key)) {
+            return $this->cache->get($key);
         }
 
         // Since we don't have any result, let's call the Query Builder.
