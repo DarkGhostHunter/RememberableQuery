@@ -88,6 +88,13 @@ class RememberableTest extends TestCase
     {
         $id = DB::table('users')->remember(60)->where('name', 'not-exist')->first();
 
+        User::make()->forceFill([
+            'name' => 'not-exists',
+            'email' => $this->faker->freeEmail,
+            'password' => 'password',
+            'email_verified_at' => today(),
+        ])->save();
+
         $this->assertNull($result = DB::table('users')->remember(60)->where('name', 'not-exist')->first());
         $this->assertEquals($result, $id);
     }
