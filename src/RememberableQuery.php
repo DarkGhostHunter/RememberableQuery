@@ -69,11 +69,33 @@ class RememberableQuery
     }
 
     /**
+     * Returns the Cache Key to work with.
+     *
+     * @return string
+     */
+    protected function cacheKey() : string
+    {
+        return $this->cacheKey ?? $this->cacheKeyHash();
+    }
+
+    /**
+     * Returns the auto-generated cache key
+     *
+     * @return string
+     */
+    public function cacheKeyHash() : string
+    {
+        return 'query|' .
+            base64_encode(md5($this->builder->toSql() . implode('', $this->builder->getBindings()), true));
+    }
+
+    /**
      * Dynamically call the query builder until a result is expected
      *
      * @param  string $method
      * @param  array $arguments
      * @return mixed
+     *
      * @throws \Psr\SimpleCache\InvalidArgumentException
      */
     public function __call(string $method, array $arguments)
@@ -100,26 +122,5 @@ class RememberableQuery
         $this->cache->put($key, $result, $this->ttl);
 
         return $result;
-    }
-
-    /**
-     * Returns the Cache Key to work with.
-     *
-     * @return string
-     */
-    protected function cacheKey() : string
-    {
-        return $this->cacheKey ?? $this->cacheKeyHash();
-    }
-
-    /**
-     * Returns the auto-generated cache key
-     *
-     * @return string
-     */
-    public function cacheKeyHash() : string
-    {
-        return 'query|' .
-            base64_encode(md5($this->builder->toSql() . implode('', $this->builder->getBindings()), true));
     }
 }
