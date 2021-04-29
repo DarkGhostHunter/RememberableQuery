@@ -17,7 +17,7 @@ Articles::latest('published_at')->take(10)->remember()->get();
 
 * PHP 7.4 or PHP 8.0
 * Laravel 7.x or 8.x
-* Neurons with synapses enabled
+* Neurons with synapse enabled
 
 ## Installation
 
