@@ -9,13 +9,14 @@
 
 Remember your Query results using only one method. Yes, only one.
 
-    User::latest()->where('name', 'Joe')->remember()->get();
+```php
+Articles::latest('published_at')->take(10)->remember()->get();
+```
 
 ## Requirements
 
-* PHP 7.4 or PHP 8.0
-* Laravel 6.x, 7.x or 8.x
-* A working brain
+* PHP 8.0
+* Laravel 8.x
 
 ## Installation
 
@@ -27,82 +28,85 @@ composer require darkghosthunter/rememberable-query
 
 ## Usage
 
-Just use the `remember()` method to remember a Query result. That's it.
+Just use the `remember()` method to remember a Query result **before the execution**. That's it. The method automatically remembers the result for 60 seconds.
 
 ```php
 use Illuminate\Support\Facades\DB;
-use Illuminate\Foundation\Auth\User;
+use App\Models\Article;
 
-$query = DB::table('users')->remember()->where('name', 'Joe')->first();
+$database = DB::table('articles')->latest('published_at')->take(10)->remember()->get();
 
-$eloquent = User::where('name', 'Joe')->remember()->first();
+$eloquent = Article::latest('published_at')->take(10)->remember()->get();
 ```
 
-The next time you call the **same** query, the result will be retrieved from the cache instead of running the SQL statement in the database. 
+The next time you call the **same** query, the result will be retrieved from the cache instead of running the SQL statement in the database, even if the result is `null` or `false`.
 
-> If the result is `null` or `false`, it won't be remembered, which mimics the Cache behaviour on these values.
+> The `remember()` will throw an error if you build a query instead of executing it.
 
 ### Time-to-live
 
-By default, queries are remembered by 60 seconds, but you're free to use any length, Datetime, DateInterval or Carbon instance.
+By default, queries are remembered by 60 seconds, but you're free to use any length, `Datetime`, `DateInterval` or Carbon instance.
 
 ```php
-User::where('name', 'Joe')->remember(today()->addHour())->first();
+DB::table('articles')->latest('published_at')->take(10)->remember(60 * 60)->get();
+
+Article::latest('published_at')->take(10)->remember(now()->addHour())->get();
 ```
 
 ### Custom Cache Key
 
-By default, the cache key is an MD5 hash of the SQL query and bindings, which avoids any collision with other queries. You can use any string, but is recommended to append `query|{key}` to avoid conflicts with other cache keys in your application.
+The auto-generated cache key is an BASE64-MD5 hash of the SQL query and its bindings, which avoids any collision with other queries while keeping the cache key short. 
+
+You can use any string as you want, but is recommended to append `query|` to avoid conflicts with other cache keys in your application.
 
 ```php
-User::where('name', 'Joe')->remember(30, 'query|find_joe')->first();
+Article::latest('published_at')->take(10)->remember(30, 'query|latest_articles')->get();
 ```
 
-### Custom Cache
+Alternatively, you can use an [custom Cache Store](#custom-cache-store) for remembering queries.
 
-In some scenarios, using the default cache of your application may be detrimental compared to the database performance. You can use any other Cache by telling the Service Container to pass it to the `RememberableQuery` class (preferably) in your `AppServiceProvider`.
+### Custom Cache Store
+
+In some scenarios, using the default cache of your application may be detrimental compared to the database performance, or may conflict with other keys. You can use any other Cache Store by setting a third parameter, or a named parameter.
 
 ```php
-public function boot()
-{
-    $this->app
-        ->when(\DarkGhostHunter\RememberableQuery\RememberableQuery::class)
-        ->needs(\Illuminate\Contracts\Cache\Repository::class)
-        ->give(function () {
-            return cache()->store('redis');
-        });
-    
-    // ...
-}
+Article::latest('published_at')->take(10)->remember(store: 'redis')->get();
 ```
 
-## Mind the gap
+### Idempotent queries
 
-There are two things you should be warned about. 
+While the reason behind remembering a Query is to cache the data retrieved from a database, you can use this to your advantage to create [idempotent](https://en.wikipedia.org/wiki/Idempotence) queries.
 
-### Operations are **NOT** commutative 
-
-Altering the Builder methods order may change the automatic cache key generation. Even if they are *practically* the same, the order of statements makes them different. For example:
+For example, you can make this query only execute once every day for a a given user ID.
 
 ```php
-<?php
+$key = auth()->user()->getAuthIdentifier();
 
-DB::table('users')->remember()->whereName('Joe')->whereAge(20)->first();
-// "query|fecc2c1bb6396e485d94eede60532937"
-
-DB::table('users')->remember()->whereAge(20)->whereName('Joe')->first();
-// "query|3ac5eba7cd0ef6151481bdfe46f6c22f"
+Article::whereKey(54)->remember(now()->addHour(), "query|user:$key")->increment('unique_views');
 ```
 
-If you plan to _remember_ the same query on different parts of your application, it's recommended to set manually the same Cache Key to ensure hitting the cached results.
+Subsequent executions of this query won't be executed at all until the cache expires, so in the above example we have surprisingly created a "unique views" mechanic. 
 
-### Only works for SELECT statements
+## Operations are **NOT** commutative
 
-The nature of remembering a Query is to cache the result automatically. 
+Altering the Builder methods order will change the auto-generated cache key hash. Even if they are _visually_ the same, the order of statements makes the hash different.
 
-Caching the result for `UPDATE`, `DELETE` and `INSERT` operations will cache the result and subsequents operations won't be executed, returning unexpected results.
+For example, given two similar queries in different parts of the application, these both will **not** share the same cached result:
 
-Don't use `remember()` on anything that is not a `SELECT` statement. 
+```php
+User::whereName('Joe')->whereAge(20)->remember()->first();
+// Cache key: "query|/XreUO1yaZ4BzH2W6LtBSA=="
+
+User::whereAge(20)->whereName('Joe')->remember()->first();
+// Cache key: "query|muDJevbVppCsTFcdeZBxsA=="
+```
+
+You can use a [custom cache key](#custom-cache-key) to avoid this problem, as both queries results will share the same cached result:
+
+```php
+User::whereName('Joe')->whereAge(20)->remember(60, 'query|find_joe')->first();
+User::whereAge(20)->whereName('Joe')->remember(60, 'query|find_joe')->first();
+```
 
 ## License
 
