@@ -15,9 +15,8 @@ Articles::latest('published_at')->take(10)->remember()->get();
 
 ## Requirements
 
-* PHP 7.4 or PHP 8.0
-* Laravel 7.x or 8.x
-* Neurons with synapse enabled
+* PHP 8.0
+* Laravel 8.x
 
 ## Installation
 
@@ -29,7 +28,7 @@ composer require darkghosthunter/rememberable-query
 
 ## Usage
 
-Just use the `remember()` method to remember a Query result **before the execution**. That's it.
+Just use the `remember()` method to remember a Query result **before the execution**. That's it. The method automatically remembers the result for 60 seconds.
 
 ```php
 use Illuminate\Support\Facades\DB;
@@ -68,33 +67,22 @@ Alternatively, you can use an [custom Cache Store](#custom-cache-store) for reme
 
 ### Custom Cache Store
 
-In some scenarios, using the default cache of your application may be detrimental compared to the database performance, or may conflict with other keys. You can use any other Cache Store by telling the Service Container to pass it to the `RememberableQuery` class (preferably) in your `AppServiceProvider`.
+In some scenarios, using the default cache of your application may be detrimental compared to the database performance, or may conflict with other keys. You can use any other Cache Store by setting a third parameter, or a named parameter.
 
 ```php
-public function register()
-{
-    $this->app
-        ->when(\DarkGhostHunter\RememberableQuery\RememberableQuery::class)
-        ->needs(\Illuminate\Contracts\Cache\Repository::class)
-        ->give(static function (): \Illuminate\Contracts\Cache\Repository {
-            return cache()->store('redis');
-        });
-    
-    // ...
-}
+Article::latest('published_at')->take(10)->remember(store: 'redis')->get();
 ```
 
 ### Idempotent queries
 
 While the reason behind remembering a Query is to cache the data retrieved from a database, you can use this to your advantage to create [idempotent](https://en.wikipedia.org/wiki/Idempotence) queries.
 
-For example, you can make this query only execute once every day for a given IP, as it's the time the cache expires.
+For example, you can make this query only execute once every day for a a given user ID.
 
 ```php
-$ttl = now()->addHour();
-$key = 'unique_visitor:192.168.0.54';
+$key = auth()->user()->getAuthIdentifier();
 
-Article::whereKey(54)->remember($ttl, $key)->increment('unique_views');
+Article::whereKey(54)->remember(now()->addHour(), "query|user:$key")->increment('unique_views');
 ```
 
 Subsequent executions of this query won't be executed at all until the cache expires, so in the above example we have surprisingly created a "unique views" mechanic. 

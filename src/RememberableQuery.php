@@ -2,10 +2,13 @@
 
 namespace DarkGhostHunter\RememberableQuery;
 
-use Illuminate\Support\Traits\ForwardsCalls;
+use DateInterval;
+use DateTimeInterface;
+use Illuminate\Contracts\Cache\Factory;
 use Illuminate\Contracts\Cache\Repository;
-use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Query\Builder;
+use Illuminate\Support\Traits\ForwardsCalls;
 use RuntimeException;
 
 class RememberableQuery
@@ -20,52 +23,23 @@ class RememberableQuery
     protected Repository $cache;
 
     /**
-     * Query Builder instance
-     *
-     * @var \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
-     */
-    protected $builder;
-
-    /**
-     * Seconds the query results should live
-     *
-     * @var \DateTimeInterface|\DateInterval|int
-     */
-    protected $ttl = 60;
-
-    /**
-     * The Cache Key to use
-     *
-     * @var string|null
-     */
-    protected ?string $cacheKey = null;
-
-    /**
      * RememberableQuery constructor.
      *
-     * @param  \Illuminate\Contracts\Cache\Repository $cache
-     * @param \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
+     * @param  \Illuminate\Contracts\Cache\Factory  $cache
+     * @param  \Illuminate\Database\Eloquent\Builder|\Illuminate\Database\Query\Builder
+     * @param  int|\DateTimeInterface|\DateInterval  $ttl
+     * @param  string|null  $cacheKey
+     * @param  string|null  $store
      */
-    public function __construct(Repository $cache, $builder)
+    public function __construct(
+        Factory $cache,
+        protected Builder|EloquentBuilder $builder,
+        protected int|DateTimeInterface|DateInterval $ttl,
+        protected ?string $cacheKey = null,
+        ?string $store = null
+        )
     {
-        $this->cache = $cache;
-        $this->builder = $builder;
-    }
-
-    /**
-     * Remembers a Query by a given time
-     *
-     * @param  \DateTimeInterface|\DateInterval|int $ttl When to invalidate the query result
-     * @param  string|null $cacheKey
-     * @return $this
-     */
-    public function remember($ttl, string $cacheKey = null): RememberableQuery
-    {
-        $this->ttl = $ttl;
-
-        $this->cacheKey = $cacheKey;
-
-        return $this;
+        $this->cache = $cache->store($store);
     }
 
     /**
@@ -85,8 +59,9 @@ class RememberableQuery
      */
     public function cacheKeyHash() : string
     {
-        return 'query|' .
-            base64_encode(md5($this->builder->toSql() . implode('', $this->builder->getBindings()), true));
+        return 'query|' . base64_encode(
+            md5($this->builder->toSql() . implode('', $this->builder->getBindings()), true)
+        );
     }
 
     /**
@@ -98,7 +73,7 @@ class RememberableQuery
      *
      * @throws \Psr\SimpleCache\InvalidArgumentException
      */
-    public function __call(string $method, array $arguments)
+    public function __call(string $method, array $arguments): mixed
     {
         // First, get the Cache Key we will work with.
         $key = $this->cacheKey();

@@ -19,13 +19,13 @@
         }
     ],
     "require": {
-        "php": "^7.4||^8.0",
-        "illuminate/database": "7.*|8.*",
-        "illuminate/support": "7.*|8.*"
+        "php": "^8.0",
+        "illuminate/database": "8.*",
+        "illuminate/support": "8.*"
     },
     "require-dev": {
-        "orchestra/testbench": "^6.16|^5.18",
-        "phpunit/phpunit": "^9.5",
+        "orchestra/testbench": "^6.19",
+        "phpunit/phpunit": "^9.5.8",
         "mockery/mockery": "^1.4"
     },
     "autoload": {
