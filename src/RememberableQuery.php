@@ -5,6 +5,7 @@ namespace DarkGhostHunter\RememberableQuery;
 use DateInterval;
 use DateTimeInterface;
 use Illuminate\Contracts\Cache\Factory;
+use Illuminate\Contracts\Cache\LockProvider as LockProviderAlias;
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder;
@@ -23,6 +24,13 @@ class RememberableQuery
     protected Repository $cache;
 
     /**
+     * The cache key to use to remember.
+     *
+     * @var string
+     */
+    protected string $cacheKey;
+
+    /**
      * RememberableQuery constructor.
      *
      * @param  \Illuminate\Contracts\Cache\Factory  $cache
@@ -30,26 +38,18 @@ class RememberableQuery
      * @param  int|\DateTimeInterface|\DateInterval  $ttl
      * @param  string|null  $cacheKey
      * @param  string|null  $store
+     * @param  int  $wait
      */
     public function __construct(
         Factory $cache,
         protected Builder|EloquentBuilder $builder,
         protected int|DateTimeInterface|DateInterval $ttl,
-        protected ?string $cacheKey = null,
-        ?string $store = null
-        )
-    {
+        ?string $cacheKey = null,
+        ?string $store = null,
+        protected int $wait = 0
+    ) {
+        $this->cacheKey = $cacheKey ?? $this->cacheKeyHash();
         $this->cache = $cache->store($store);
-    }
-
-    /**
-     * Returns the Cache Key to work with.
-     *
-     * @return string
-     */
-    protected function cacheKey() : string
-    {
-        return $this->cacheKey ?? $this->cacheKeyHash();
     }
 
     /**
@@ -57,44 +57,61 @@ class RememberableQuery
      *
      * @return string
      */
-    public function cacheKeyHash() : string
+    public function cacheKeyHash(): string
     {
-        return 'query|' . base64_encode(
-            md5($this->builder->toSql() . implode('', $this->builder->getBindings()), true)
+        return 'query|'.base64_encode(
+            md5($this->builder->toSql().implode('', $this->builder->getBindings()), true)
         );
     }
 
     /**
      * Dynamically call the query builder until a result is expected
      *
-     * @param  string $method
-     * @param  array $arguments
-     * @return mixed
+     * @param  string  $method
+     * @param  array  $arguments
      *
-     * @throws \Psr\SimpleCache\InvalidArgumentException
+     * @return mixed
      */
     public function __call(string $method, array $arguments): mixed
     {
-        // First, get the Cache Key we will work with.
-        $key = $this->cacheKey();
+        return $this->cache->remember($this->cacheKey, $this->ttl, function () use ($method, $arguments) {
+            return $this->wait
+                ? $this->getLockResult($method, $arguments)
+                : $this->getResult($method, $arguments);
+        });
+    }
 
-        // Let's ask first if the Cache has a result by the key. If it does, return it.
-        if ($this->cache->has($key)) {
-            return $this->cache->get($key);
-        }
+    /**
+     * Returns the results from a lock callback.
+     *
+     * @param  string  $method
+     * @param  array  $arguments
+     *
+     * @return mixed
+     */
+    protected function getLockResult(string $method, array $arguments): mixed
+    {
+        return $this->cache
+            ->lock($this->cacheKey, $this->wait)
+            ->block($this->wait, fn() => $this->getResult($method, $arguments));
+    }
 
-        // Since we don't have any result, get it from the Query Builder.
+    /**
+     * Forwards the call to the builder and retrieves the result.
+     *
+     * @param  string  $method
+     * @param  array  $arguments
+     *
+     * @return mixed
+     */
+    protected function getResult(string $method, array $arguments): mixed
+    {
         $result = $this->forwardCallTo($this->builder, $method, $arguments);
 
         // Force the developer to use this as before-last method in the query builder.
         if ($result instanceof Builder || $result instanceof EloquentBuilder) {
-            throw new RuntimeException(
-                "The `remember()` method call is not before query execution: [$method] called."
-            );
+            throw new RuntimeException("The `remember()` method call is not before query execution: [$method] called.");
         }
-
-        // Save the result before returning it.
-        $this->cache->put($key, $result, $this->ttl);
 
         return $result;
     }

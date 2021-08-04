@@ -73,11 +73,23 @@ In some scenarios, using the default cache of your application may be detrimenta
 Article::latest('published_at')->take(10)->remember(store: 'redis')->get();
 ```
 
+### Cache Lock (data races)
+
+On multiple processes, the Query may be executed multiple times until the first process is able to store the result in the cache, specially when these take more than 1 second. To avoid this, set the `wait` parameter with the number of seconds to hold the lock acquired.
+
+```php
+Article::latest('published_at')->take(200)->remember(wait: 5)->get();
+```
+
+The first process will acquire the lock for the given seconds, execute the query and store the result. The next processes will wait until the cache data is available to retrieve the result from there.
+
+> If you need to use this across multiple processes, use the [cache lock](https://laravel.com/docs/cache#managing-locks-across-processes) directly.
+
 ### Idempotent queries
 
 While the reason behind remembering a Query is to cache the data retrieved from a database, you can use this to your advantage to create [idempotent](https://en.wikipedia.org/wiki/Idempotence) queries.
 
-For example, you can make this query only execute once every day for a a given user ID.
+For example, you can make this query only execute once every day for a given user ID.
 
 ```php
 $key = auth()->user()->getAuthIdentifier();
@@ -85,11 +97,11 @@ $key = auth()->user()->getAuthIdentifier();
 Article::whereKey(54)->remember(now()->addHour(), "query|user:$key")->increment('unique_views');
 ```
 
-Subsequent executions of this query won't be executed at all until the cache expires, so in the above example we have surprisingly created a "unique views" mechanic. 
+Subsequent executions of this query won't be executed at all until the cache expires, so in the above example we have surprisingly created a "unique views" mechanic.
 
 ## Operations are **NOT** commutative
 
-Altering the Builder methods order will change the auto-generated cache key hash. Even if they are _visually_ the same, the order of statements makes the hash different.
+Altering the Builder methods order will change the auto-generated cache key hash. Even if they are _visually_ the same, the order of statements makes the hash completely different.
 
 For example, given two similar queries in different parts of the application, these both will **not** share the same cached result:
 
@@ -101,11 +113,17 @@ User::whereAge(20)->whereName('Joe')->remember()->first();
 // Cache key: "query|muDJevbVppCsTFcdeZBxsA=="
 ```
 
-You can use a [custom cache key](#custom-cache-key) to avoid this problem, as both queries results will share the same cached result:
+To ensure you're hitting the same cache on similar queries, use a [custom cache key](#custom-cache-key). With this, all queries using the same key will share the same cached result:
 
 ```php
 User::whereName('Joe')->whereAge(20)->remember(60, 'query|find_joe')->first();
 User::whereAge(20)->whereName('Joe')->remember(60, 'query|find_joe')->first();
+```
+
+This will allow you to even retrieve the data outside the query, by just asking directly to the cache.
+
+```php
+$joe = Cache::get('query|find_joe');
 ```
 
 ## License

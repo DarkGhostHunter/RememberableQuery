@@ -2,8 +2,12 @@
 
 namespace Tests;
 
+use Illuminate\Cache\ArrayStore;
+use Illuminate\Contracts\Cache\Factory;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Support\Facades\Cache;
 use Orchestra\Testbench\TestCase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Foundation\Auth\User;
@@ -102,6 +106,15 @@ class RememberableTest extends TestCase
         static::assertEquals($result, $id);
     }
 
+    public function test_query_returns_raw_statement(): void
+    {
+        DB::table('users')->where(DB::raw("'name' <> NULL"))->remember(60)->first();
+
+        DB::table('users')->truncate();
+
+        static::assertNotNull(DB::table('users')->where(DB::raw("'name' <> NULL"))->remember(60)->first());
+    }
+
     public function test_forces_developer_to_set_as_before_last_method(): void
     {
         $this->expectException(RuntimeException::class);
@@ -128,19 +141,42 @@ class RememberableTest extends TestCase
         $this->assertDatabaseHas('users', ['name' => 'bar']);
     }
 
-    public function test_doesnt_register_macros_if_collisions_with_name(): void
+    public function test_uses_different_store(): void
     {
-        QueryBuilder::macro('remember', static function () : bool {
-            return true;
-        });
+        $cache = $this->app->make('cache')->store();
 
-        EloquentBuilder::macro('remember', static function () : bool {
-            return true;
-        });
+        $this->swap('cache', $this->mock(Factory::class))
+            ->shouldReceive('store')
+            ->with('foo')
+            ->once()
+            ->andReturn($cache);
 
-        $this->app->resolveProvider(RememberableQueryServiceProvider::class)->boot();
+        DB::table('users')->remember(store: 'foo')->first(['name' => 'foo']);
+    }
 
-        static::assertTrue(QueryBuilder::remember());
-        static::assertTrue(EloquentBuilder::remember());
+    public function test_first_acquires_lock_and_returns_result(): void
+    {
+        DB::table('users')->remember(key: 'foo', wait: 1)->get();
+
+        static::assertNotNull(Cache::get('foo'));
+    }
+
+    public function test_second_waits_for_lock_to_retrieve_from_cache(): void
+    {
+        Cache::lock('foo', 1)->get();
+        Cache::put('foo', $user = DB::table('users')->where('id', 1)->first());
+
+        DB::table('users')->where('id', 1)->delete();
+
+        static::assertEquals($user, DB::table('users')->where('id', 1)->remember(key: 'foo', wait: 1)->first());
+    }
+
+    public function test_second_exception_on_timeout(): void
+    {
+        $this->expectException(LockTimeoutException::class);
+
+        Cache::lock('foo', 2)->get();
+
+        DB::table('users')->where('id', 1)->remember(key: 'foo', wait: 1)->first();
     }
 }
