@@ -20,11 +20,11 @@
     ],
     "require": {
         "php": "^8.0",
-        "illuminate/database": "8.*",
-        "illuminate/support": "8.*"
+        "illuminate/database": "^8.0|^9.0",
+        "illuminate/support": "^8.0|^9.0"
     },
     "require-dev": {
-        "orchestra/testbench": "^6.19",
+        "orchestra/testbench": "^6.19|^7.0",
         "phpunit/phpunit": "^9.5.8",
         "mockery/mockery": "^1.4"
     },
