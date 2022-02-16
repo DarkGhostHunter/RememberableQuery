@@ -18,6 +18,7 @@
             "role": "Developer"
         }
     ],
+    "abandoned": "laragear/cache-query",
     "require": {
         "php": "^8.0",
         "illuminate/database": "8.*",
